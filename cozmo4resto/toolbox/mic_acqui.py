@@ -5,7 +5,7 @@ import collections
 import soundfile
 import time
 
-from use_snowboy import *
+from use_engine import *
 from ringBuffer import RingBuffer
 
 from sys import byteorder
@@ -22,7 +22,7 @@ CHUNK_SIZE = 1024*1
 FORMAT = pyaudio.paInt16
 RATE = 16000
 CHANNELS = 6
-size = RATE * 3
+size = RATE * 2
 INDEX = 2
 
 
@@ -53,7 +53,9 @@ def callback(in_data, frame_count, time_info, flag): #NEW
     for i in range(CHANNELS) :
         snd_data = (array('h', in_data)[i::CHANNELS])
         BUFFER[i].add(snd_data)
-    if HT >= 30 :
+    if HT >= 50 :
+        print('Direction : ')
+        HT = 0
         return(None, pyaudio.paComplete)
 #    if kws(tmp) : return(None, pyaudio.paComplete)
     return(None, pyaudio.paContinue)
@@ -63,7 +65,8 @@ def record():
     Record a word or words from the microphone and 
     return the data as an array of signed shorts.
     """
-    global HT
+    global HT, BUFFER
+    BUFFER = []
     for i in range(CHANNELS) :
         BUFFER.append(RingBuffer(size))
         
@@ -79,7 +82,6 @@ def record():
 #    for i in range(CHANNELS) :
 #        buffer.append(RingBuffer(size))
     while stream.is_active(): #NEW
-        print(HT)
         HT += 1
         time.sleep(0.1) #NEW
 

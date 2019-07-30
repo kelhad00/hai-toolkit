@@ -14,6 +14,7 @@ from math import sqrt
 from scipy.io import wavfile
 from glob import glob
 from array import array
+import time
 
 from mic_acqui import record
 
@@ -21,7 +22,7 @@ import asyncio
 import cozmo
 from cozmo.util import degrees
 
-mic = []; datafile = []; tmp = []; tau = []; sol = []
+mic = []; datafile = []
 v = 343
 PATH = r"C:\Users\hugob\Documents\Umons\Ankara\Python\DB\ENTERFACE\ENT_rasp_pya_cozmo_far_same\ENT_rasp_pya_cozmo_"
 num_file = 12
@@ -88,7 +89,7 @@ def delay_f(data, samplingFreq) :
         tau.append(timeTau[abs(CC[i]).argmax()])
     return tau
 
-def equations(p, tau, dct, i):
+def equations(p, tau, dct):
     """
     Functions used in scipy.optimize.root() to obtain
     coordonates of origin of the sound
@@ -103,50 +104,52 @@ def equations(p, tau, dct, i):
         2-D array -- Solutions of both equations, need to be 0 at best
     """
     x, y = p
-    return (v*tau[i][0] - sqrt((dct['x2']-x)**2 + (dct['y2']-y)**2) + sqrt((dct['x1']-x)**2 + (dct['y1']-y)**2),
-            v*tau[i][1] - sqrt((dct['x3']-x)**2 + (dct['y3']-y)**2) + sqrt((dct['x2']-x)**2 + (dct['y2']-y)**2))
+    return (v*tau[0] - sqrt((dct['x2']-x)**2 + (dct['y2']-y)**2) + sqrt((dct['x1']-x)**2 + (dct['y1']-y)**2),
+            v*tau[1] - sqrt((dct['x3']-x)**2 + (dct['y3']-y)**2) + sqrt((dct['x2']-x)**2 + (dct['y2']-y)**2))
 
-def cozmo_direction(angle):
-    def newfunc(robot : cozmo.robot.Robot):
+def cozmo_direction(prev_ang, ang):
+    def newfunc(sdk_conn):
+        robot = sdk_conn.wait_for_robot()
         robot.set_head_angle(degrees(44.5)).wait_for_completed()
-        for j in range(len(angle)) :
-            sol = angle[j]-angle[j-1]
-            if abs(sol) >= 180 :
-                sol = sol%360
+        sol = ang-prev_ang
+        if abs(sol) > 180 :
+#            sol = 360-sol
+            sol=sol%360
+        print(sol)
         robot.turn_in_place(degrees(sol)).wait_for_completed()
     return newfunc
 
-def main():
-    tmp = []
-    sample_width, audio_buffer, rate = record()
-#    for i in range(len(audio_buffer)) :
-#        tmp.append(audio_buffer[i].get_data()) 
-    
-    tau.append(delay_f([audio_buffer[0].get_data(), audio_buffer[1].get_data(), audio_buffer[2].get_data()], rate))
+def main(prev_ang):
+    tmp = []; sol = []; tau = []; test = []; ang = []
+    sample_width, audio_buffer, rate = record() 
+    tau = delay_f([audio_buffer[0].get_data(), audio_buffer[1].get_data(), audio_buffer[2].get_data()], rate)
     print(tau)
 
     dct = {'x1':x1,'x2':x2,'x3':x3,
            'y1':y1,'y2':y2,'y3':y3}
-    test = []
-    ang = []
-    ang.append(0)
-#    f = open('last_angle', 'r')
-#    ang.append(float(f.read()))
-#    f.close()
-    open('last_angle', 'w').close()
-    for i in range(1) : #12
-        sol.append(root(equations, [0, 0], (tau, dct, i), tol = 10))
-        abs_angle = np.arccos(1 - ssd.cosine([dct['x1'], dct['x2']], sol[i].x))*180/np.pi
-        test.append(np.sin(sol[i].x[0]))
-        if test[i] >= 0 : ang.append(-abs_angle)
-        else : ang.append(abs_angle)
-        print(ang[0], ang[1])
-    cozmo_program = cozmo_direction(ang)
-    cozmo.run_program(cozmo_program)
-    return ang[1]
+    sol=root(equations, [0, 0], (tau, dct), tol = 10)
+    abs_angle = np.arccos(1 - ssd.cosine([dct['x1'], dct['x2']], sol.x))*180/np.pi
+#    ang = np.arccos(1 - ssd.cosine([dct['x1'], dct['x2']], sol.x))*180/np.pi
+#    ang = np.arctan2(sol.x[1], sol.x[0])*180/np.pi
+#    print(sol.x[1], sol.x[0])
+#    print(ang)
+#    test.append(np.sin(sol[i].x[0]))
+    test = np.sin(sol.x[0])
+    if test >= 0 :
+        ang = -1*abs_angle
+    else :
+        ang = abs_angle
+    print(prev_ang, ang)
+    cozmo_program = cozmo_direction(prev_ang, ang)
+    return ang, cozmo_program
     
 if __name__ == '__main__' :
-    last_angle = main()
+    cozmo.setup_basic_logging()
+    prev_angle = 0
+    while True :
+        prev_angle, cozmo_program = main(prev_angle)
+        cozmo.connect(cozmo_program)
+#        time.sleep(1)
 #    f = open('last_angle', 'w')
 #    f.write(str(last_angle))
 #    f.close()
