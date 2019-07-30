@@ -1,0 +1,77 @@
+slots:
+  cuisine:
+    type: text
+  location:
+    type: text
+  restaurant:
+    type: unfeaturized
+  matches:
+    type: unfeaturized
+  kevin:
+    type: text
+
+entities:
+  - location
+  - cuisine
+  
+intents:
+  - greet
+  - goodbye
+  - affirm_yes
+  - affirm_need
+  - deny
+  - thank
+  - cuisine
+  - wantdinner
+  - kevin
+
+actions:
+- utter_greet
+- utter_cuisine
+- utter_direction
+- utter_no_options
+- utter_default
+- utter_goodbye
+- utter_look
+- utter_ask_address
+- utter_bon_appetit
+- utter_kevin
+- utter_welcome
+- action_search_restaurant
+- action_other_suggest
+- action_give_address
+- action_custom_fallback
+
+templates:
+  utter_greet:
+  - text: "Hey! What's up?"
+
+  utter_default:
+  - text: "Sorry, I didn't understand that."
+
+  utter_cuisine:
+  - text: "What kind of food would you like?"
+
+  utter_look:
+  - text: "Hmm... Looking for nearby {cuisine} restaurants..."
+
+  utter_no_options:
+  - text: "I'm sorry. I don't have any other options nearby. Please choose another type of food."
+
+  utter_ask_address:
+  - text: "Do you need the address?"
+
+  utter_direction:
+  - text: "You take bus 1 and get off at Main Street. Ok?"
+
+  utter_bon_appetit:
+  - text: "Okay. Bon appetit! I will go to sleep now."
+
+  utter_goodbye:
+  - text: "Okay. Have a nice dinner! I will go to sleep now."
+
+  utter_kevin:
+  - text: "Shut up, Kevin."
+
+  utter_welcome:
+  - text: "No problem. Bye!"
