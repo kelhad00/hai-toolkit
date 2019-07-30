@@ -1,0 +1,18 @@
+[{"user": "potato",
+    "properties":{
+        "street": "Haymarket",
+        "city": "London"
+    }
+    
+}, {"user": "papaya",
+    "properties":{
+        "street": "Bilkent Blv.",
+        "city": "Ankara"
+    }
+ 
+}, {"user": "coconut",
+    "properties":{
+        "street": "Hatboyu Bulvari",
+        "city": "Istanbul"
+    }
+}]
