@@ -112,11 +112,14 @@ def cozmo_direction(prev_ang, ang):
         robot = sdk_conn.wait_for_robot()
         robot.set_head_angle(degrees(44.5)).wait_for_completed()
         sol = ang-prev_ang
+        if sol != sol :
+            sol = 0
         if abs(sol) > 180 :
 #            sol = 360-sol
-            sol=sol%360
+            sol= -np.sign(sol)*(360-abs(sol))
         print(sol)
         robot.turn_in_place(degrees(sol)).wait_for_completed()
+        robot.set_head_angle(degrees(20)).wait_for_completed()
     return newfunc
 
 def main(prev_ang):
@@ -139,6 +142,8 @@ def main(prev_ang):
         ang = -1*abs_angle
     else :
         ang = abs_angle
+    if ang != ang :
+        ang = 0
     print(prev_ang, ang)
     cozmo_program = cozmo_direction(prev_ang, ang)
     return ang, cozmo_program
@@ -149,7 +154,7 @@ if __name__ == '__main__' :
     while True :
         prev_angle, cozmo_program = main(prev_angle)
         cozmo.connect(cozmo_program)
-#        time.sleep(1)
+        time.sleep(1)
 #    f = open('last_angle', 'w')
 #    f.write(str(last_angle))
 #    f.close()

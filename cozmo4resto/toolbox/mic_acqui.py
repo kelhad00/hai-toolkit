@@ -22,7 +22,7 @@ CHUNK_SIZE = 1024*1
 FORMAT = pyaudio.paInt16
 RATE = 16000
 CHANNELS = 6
-size = RATE * 2
+size = RATE * 3
 INDEX = 2
 
 
@@ -42,7 +42,7 @@ def save_file(sample_width, data, rate):
         wf.close()
         
 def kws_snowboy(data):
-    np.save('array1.npy', data)
+#    np.save('array1.npy', data)
     sb=SnowboyEngine('alexa', 0.9)
     res=sb.process(data)
 #    print(res)
@@ -52,12 +52,15 @@ def callback(in_data, frame_count, time_info, flag): #NEW
     global BUFFER, HT
     for i in range(CHANNELS) :
         snd_data = (array('h', in_data)[i::CHANNELS])
+#    if max(snd_data)>THRESHOLD :
         BUFFER[i].add(snd_data)
-    if HT >= 50 :
+    if HT >= 20 :
         print('Direction : ')
         HT = 0
         return(None, pyaudio.paComplete)
-#    if kws(tmp) : return(None, pyaudio.paComplete)
+#    elif kws_snowboy(BUFFER[0].get_data()) :
+#        print('My name is Cozmo !')
+#        return(None, pyaudio.paComplete)
     return(None, pyaudio.paContinue)
         
 def record():

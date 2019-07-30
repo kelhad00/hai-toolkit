@@ -22,5 +22,8 @@ class RingBuffer():
     def popleft(self):
         return self._buf.popleft()
     
+    def clear(self):
+        self._buf.clear()
+    
     def len(self):
         return len(self._buf)
