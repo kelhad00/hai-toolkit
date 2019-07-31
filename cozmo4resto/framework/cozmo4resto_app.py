@@ -8,63 +8,90 @@ from abc import ABC, abstractmethod
 #TODO: Build test functions to input in CozmoModule class
 #TODO: CozmoConnector->CozmoModule to add send and recv with zmq + function using them
 
-class CozmoStates(StateMachine):
-    """build graph for cozmo"""
-    wondering = State("wonder", initial=True)
-    listener = State("listener")
-    speaker = State("speaker")
+#EXAMPLE FUNCTIONS
+import speech_recognition as sr
+def asr():
+    rec = sr.Recognizer()
+    with sr.Microphone() as source:
+        audio = rec.record(source, 5)
+    text = rec.recognize_google(audio)
+    return text
 
-    start_listening = wondering.to(listener)
-    speak = listener.to(speaker)
-    stop_speaking = speaker.to(wondering)
-    listen = speaker.to(listener)
-    stop_listening = listener.to(wondering)
+from gtts import gTTS
+def gtts(text):
+    name = str(uuid.uuid4().int)[:10]
+    tts = gTTS(text, 'en')
+    tts.save('potato_'+name+'.wav')
+
+def dm(input):
+    dct = {'potato':'coconut', 'banana':'papaya'}
+    try:
+        output = dct[input]
+    except:
+        output = "Nothing I know!"
+    return output
+    
+# class CozmoStates(StateMachine):
+#     """build graph for cozmo"""
+#     wandering = State("wander", initial=True)
+#     listener = State("listener")
+#     speaker = State("speaker")
+
+#     start_listening = wandering.to(listener)
+#     speak = listener.to(speaker)
+#     stop_speaking = speaker.to(wandering)
+#     listen = speaker.to(listener)
+#     stop_listening = listener.to(wandering)
+
+class CozmoStates(StateMachine):
+    """Build graph for Cozmo behavior"""
+    asr = State("asr", initial=True)
+    dm = State("dm")
+    tts = State("tts")
+
+    listen = tts.to(asr)
+    think = asr.to(dm)
+    speak = dm.to(tts)
 
 class Connector(ABC):
-    def __init__(self, add_client, add_server):
-        self.add_client = add_client
-        self.add_server = add_server
+    def __init__(self, addr_client, addr_server):
+        self.addr_client = addr_client
+        self.addr_server = addr_server
     
     @abstractmethod
-    def client(self):
+    def run_client(self):
         pass
     
     @abstractmethod
-    def server(self):
+    def run_server(self):
         pass
 
 class CozmoConnector(Connector):
     '''using zmq for connecting'''
 
-    def __init__(self, add_client = None, add_server = None):
-        super(CozmoConnector, self).__init__(add_client, add_server)
+    def __init__(self, addr_client = None, addr_server = None):
+        super(CozmoConnector, self).__init__(addr_client, addr_server)
     
-    def client(self, data, address=None, stop_msg="STOP"):
-        if address is not None:
-            self.address = address
-        print(self.address) #TODO: replace with sending msg with zmq
+    def run_client(self, data, stop_msg="STOP"):
+        '''zmq rep req implementation'''
         context = zmq.Context()
         socket = context.socket(zmq.REQ)
-        socket.connect(self.address)
+        socket.bind(self.address)
         data = json.dumps(data)
-        socket.send(data)
+        socket.send_json(data)
         json_data = socket.recv_json()
         return json_data
 
-    def server(self, func, address = None, stop_msg="STOP"):
-        if address is not None:
-            self.address = address
-        print(self.address) #TODO:replace with receiving msg with zmq
-
+    def run_server(self, func, address = None, stop_msg="STOP"):
         context = zmq.Context()
         socket = context.socket(zmq.REP)
-        socket.bind(self.address)
+        socket.connect(self.address)
         while True:
-            msg = socket.recv()
+            msg = socket.recv_json()
             if msg == stop_msg:
                 break
             json_data = func(msg)
-            socket.send(json_data)
+            socket.send_json(json_data)
 
 class Module(ABC):
     def __init__(self, func):
@@ -75,13 +102,24 @@ class Module(ABC):
         """call the function here"""
         pass
 
+    @abstractmethod
+    def add_connector(self, connector):
+        """connector is instance of Connector"""
+        pass
+
+    @abstractmethod
+    def run_connector(self):
+        """must add_connector before"""
+        pass
+
+
 class CozmoModule(Module):
     """Implements inputs and outputs only.
     connections is taken care of by Connector class."""
 
-    def __init__(self, func, next_state, json_data=None):
+    def __init__(self, func, json_data=None):
         super(CozmoModule, self).__init__(func)
-        self.next_state = next_state #TODO: improve next_state decision code
+        self.next_state = None
         if json_data is None:
             self.json_data = json.dumps({'data':None, 'current_state':None, 'next_state':None})
         else:
@@ -91,6 +129,10 @@ class CozmoModule(Module):
         self.json_data = json_data
         jdata = json.loads(self.json_data)
         data = self.func(jdata['data']) #call function
+        jdata = self.create_json(data)
+        return jdata
+
+    def create_json(self, data):
         next_state = self.get_next_state(data) #function does not return anything yet
         jdata['data'] = data
         jdata['next_state'] = next_state
@@ -100,6 +142,18 @@ class CozmoModule(Module):
         '''implement next state logic'''
         pass #TODO: base decision on list of possible states passed to the class?
 
+    def add_connector(self, connector):
+        ### TODO: replace this part with more robust test
+        if not hasattr(connector, 'run_server'):
+            raise AttributeError('connector must be a Connector object')
+        ###
+        self.connector = connector
+
+    def run_connector(self):
+        if "connector" not in self.__dict__:
+            raise ValueError("Must add_connector first")
+        self.connector.run_server()
+
     @property
     def json_data(self):
         return self._json_data
@@ -107,7 +161,7 @@ class CozmoModule(Module):
     @json_data.setter
     def json_data(self, jdata):
         json_must_have = ['data', 'current_state', 'next_state']
-        try:
+        try: #check if jdata is json format
             data = json.loads(jdata)
             for val in json_must_have:
                 if val not in data:
@@ -120,19 +174,14 @@ class CozmoBehavior:
     def __init__(self, graph, state_dct, json_data = None):
         self.graph = graph
         self.state_dct = state_dct
-        self.json_data = json_data
+        self.json_data = json_data#info about next state and input data for next state
 
     def run_graph(self, json_data = None):
         if json_data is not None:
             self.json_data = json_data
         while True:
             func = self.state_dct[self.graph.current_state]
-            ### TEMPO
-            if isinstance(func, Connector):
-                next_state, json_data = func.connect()
-            elif isinstance(func, Module):
-                json_data, next_state = func.call(json_data)
-            ### ###
+            func.run_client(json_data)#For now all func are connectors
             if self.stop_condition(next_state):
                 break
             self.update_state(next_state)
@@ -174,10 +223,13 @@ class CozmoBehavior:
 
 if __name__ == "__main__":
     graph = CozmoStates()
+    connector_asr = CozmoConnector(add_client='127.0.0.1:5000', add_server='127.0.0.1:5000')
+    connector_dm = CozmoConnector(add_client='127.0.0.1:5001', add_server='127.0.0.1:5001')
+    connector_tts = CozmoConnector(add_client='127.0.0.1:5002', add_server='127.0.0.1:5002')
     state_dct = {
-        'wonder':[],#can be either a connector or a Module: connector connects to Module; Module is run
-        'listener':[],
-        'speaker':[]
+        'asr':connector_asr,
+        'dm':connector_dm,
+        'tts':connector_tts
     }
     behav = CozmoBehavior(graph, state_dct)
     behav.run_graph()
