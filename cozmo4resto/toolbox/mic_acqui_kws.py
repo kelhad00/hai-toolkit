@@ -5,7 +5,9 @@ import collections
 import soundfile
 import time
 
-#from use_engine import *
+# This simport is dependent of https://github.com/Picovoice/wakeword-benchmark
+# it should be cloned in the same folder of this file with the name "kws"
+from use_engine import *
 from ringBuffer import RingBuffer
 
 from sys import byteorder
@@ -13,14 +15,17 @@ from array import array
 
 """
 window_duration_ms needs to be large enough to contain all the keyword (for KWS)
-                         to be large enough to contain all the sentence (for DM)
+                         to be large enough to contain all the sentence (for ASR)
 frame_duration_ms = (1000.0 / sample_rate)
 """
 
-THRESHOLD = 2000
-CHUNK_SIZE = 1024*1
-FORMAT = pyaudio.paInt16
+
+
 RATE = 16000
+THRESHOLD = 2000
+#CHUNK_SIZE = 1024*1
+CHUNK_SIZE = int(RATE*0.8)
+FORMAT = pyaudio.paInt16
 CHANNELS = 6
 size = RATE * 3
 INDEX = 2
@@ -30,37 +35,50 @@ HT = 0 #NEW
 BUFFER = [] #NEW
 # size = int(window_duration_ms/frame_duration_ms)
 
+from scipy.io.wavfile import write
 def save_file(sample_width, data, rate):
-    for i in range(len(data)):    
+    for i in range(len(data)):
         tmp = array('h')
-        wf = wave.open('test' + str(i) + '.wav', 'wb')
-        wf.setnchannels(1)
-        wf.setsampwidth(sample_width)
-        wf.setframerate(rate)
-        tmp = data[i].get_data() 
-        wf.writeframes(tmp)
-        wf.close()
+        tmp = data[i].get_data()
+        write('test' + str(i) + '.wav',rate,tmp)
+        
+        #wf = wave.open('test' + str(i) + '.wav', 'wb')
+        #wf.setnchannels(1)
+        #wf.setsampwidth(sample_width)
+        #wf.setframerate(rate)
+        #wf.writeframes(tmp)
+        #wf.close()
         
 def kws_snowboy(data):
 #    np.save('array1.npy', data)
-    sb=SnowboyEngine('alexa', 0.9)
+    sb=SnowboyEngine('alexa', 1)
     res=sb.process(data)
 #    print(res)
     return res
 
 def callback(in_data, frame_count, time_info, flag): #NEW
-    global BUFFER, HT
+    global BUFFER#, HT
     for i in range(CHANNELS) :
         snd_data = (array('h', in_data)[i::CHANNELS])
 #    if max(snd_data)>THRESHOLD :
         BUFFER[i].add(snd_data)
-    if HT >= 20 :
-        print('Direction : ')
-        HT = 0
-        return(None, pyaudio.paComplete)
-#    elif kws_snowboy(BUFFER[0].get_data()) :
-#        print('My name is Cozmo !')
+        
+    
+#    if HT >= 100 :
+#        print('Direction : ')
+#        HT = 0
 #        return(None, pyaudio.paComplete)
+#    else:
+    start=time.time()
+    spotted=kws_snowboy(BUFFER[0].get_data())
+    duration=time.time()-start
+    print('kws time:')
+    print(duration)
+    print(spotted)
+    if spotted:
+        print('keyword spotted')
+            #print('My name is Cozmo !')
+#            return(None, pyaudio.paComplete)
     return(None, pyaudio.paContinue)
         
 def record():
@@ -85,8 +103,8 @@ def record():
 #    for i in range(CHANNELS) :
 #        buffer.append(RingBuffer(size))
     while stream.is_active(): #NEW
-        HT += 1
-        time.sleep(0.1) #NEW
+#        HT += 1
+        time.sleep(0.5) #NEW
 
     stream.stop_stream() #NEW
     stream.close() #NEW
