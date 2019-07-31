@@ -5,6 +5,8 @@ import collections
 import soundfile
 import time
 
+# This simport is dependent of https://github.com/Picovoice/wakeword-benchmark
+# it should be cloned in the same folder of this file with the name "kws"
 from use_engine import *
 from ringBuffer import RingBuffer
 
@@ -16,6 +18,8 @@ window_duration_ms needs to be large enough to contain all the keyword (for KWS)
                          to be large enough to contain all the sentence (for ASR)
 frame_duration_ms = (1000.0 / sample_rate)
 """
+
+
 
 RATE = 16000
 THRESHOLD = 2000
