@@ -1,6 +1,7 @@
 from statemachine import State, StateMachine
 import json
 import uuid
+import zmq
 from abc import ABC, abstractmethod
 
 
@@ -20,31 +21,50 @@ class CozmoStates(StateMachine):
     stop_listening = listener.to(wondering)
 
 class Connector(ABC):
-    def __init__(self, address):
-        self.address = address
+    def __init__(self, add_client, add_server):
+        self.add_client = add_client
+        self.add_server = add_server
     
     @abstractmethod
-    def send_msg(self):
+    def client(self):
         pass
     
     @abstractmethod
-    def recv_msg(self):
+    def server(self):
         pass
 
 class CozmoConnector(Connector):
-    def __init__(self, address):
-        super(CozmoConnector, self).__init__(address)
+    '''using zmq for connecting'''
+
+    def __init__(self, add_client = None, add_server = None):
+        super(CozmoConnector, self).__init__(add_client, add_server)
     
-    def send_msg(self, data, to_address=None):
-        if to_address is not None:
-            self.address = to_address
+    def client(self, data, address=None, stop_msg="STOP"):
+        if address is not None:
+            self.address = address
         print(self.address) #TODO: replace with sending msg with zmq
-    
-    def recv_msg(self, from_address = None):
-        if from_address is not None:
-            self.address = from_address
-        self.address = from_address
+        context = zmq.Context()
+        socket = context.socket(zmq.REQ)
+        socket.connect(self.address)
+        data = json.dumps(data)
+        socket.send(data)
+        json_data = socket.recv_json()
+        return json_data
+
+    def server(self, func, address = None, stop_msg="STOP"):
+        if address is not None:
+            self.address = address
         print(self.address) #TODO:replace with receiving msg with zmq
+
+        context = zmq.Context()
+        socket = context.socket(zmq.REP)
+        socket.bind(self.address)
+        while True:
+            msg = socket.recv()
+            if msg == stop_msg:
+                break
+            json_data = func(msg)
+            socket.send(json_data)
 
 class Module(ABC):
     def __init__(self, func):
@@ -59,30 +79,42 @@ class CozmoModule(Module):
     """Implements inputs and outputs only.
     connections is taken care of by Connector class."""
 
-    def __init__(self, func, next_state):
+    def __init__(self, func, next_state, json_data=None):
         super(CozmoModule, self).__init__(func)
-        self.connected = False
         self.next_state = next_state #TODO: improve next_state decision code
-
-    
-    def call(self, json_data=None):
-        if not self.connected:
-            json_data = self.func(json_data)
-            next_state = self.next_state #TODO: improve next_state decision code
+        if json_data is None:
+            self.json_data = json.dumps({'data':None, 'current_state':None, 'next_state':None})
         else:
-            json_data = self.func(json_data)
-            next_state = self.next_state #TODO: improve next_state decision code
+            self.json_data = json_data
+
+    def call(self, json_data):
+        self.json_data = json_data
+        jdata = json.loads(self.json_data)
+        data = self.func(jdata['data']) #call function
+        next_state = self.get_next_state(data) #function does not return anything yet
+        jdata['data'] = data
+        jdata['next_state'] = next_state
+        return jdata
+
+    def get_next_state(self, data):
+        '''implement next state logic'''
+        pass #TODO: base decision on list of possible states passed to the class?
 
     @property
-    def connected(self):
-        return self._connected
-
-    @connected.setter
-    def connected(self, connect):
-        if isinstance(connect, bool):
-            self._connected = connect
-        else:
-            raise AttributeError("connected must be of the type bool")
+    def json_data(self):
+        return self._json_data
+    
+    @json_data.setter
+    def json_data(self, jdata):
+        json_must_have = ['data', 'current_state', 'next_state']
+        try:
+            data = json.loads(jdata)
+            for val in json_must_have:
+                if val not in data:
+                    raise ValueError('JSON input must have: {}'.format(json_must_have))
+        except:
+            raise ValueError('Input must be JSON and must have {}'.format(json_must_have))
+        self._json_data = jdata
 
 class CozmoBehavior:
     def __init__(self, graph, state_dct, json_data = None):
