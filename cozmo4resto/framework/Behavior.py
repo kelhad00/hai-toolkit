@@ -1,17 +1,22 @@
 from abc import ABC, abstractmethod
+from statemachine import State, StateMachine
 
 class CozmoBehavior:
     def __init__(self, graph, state_dct, jdata = None):
         self.graph = graph
         self.state_dct = state_dct
-        self.jdata = jdata#info about next state and input data for next state
+        if jdata is None:
+            self.jdata = {'data':None, 'current_state':None, 'next_state':None}
+        else:
+            self.jdata = jdata #info about next state and input data for next state
 
     def run_graph(self, jdata = None):
-        if jdata is not None:
-            self.jdata = jdata
+        if jdata is None:
+            jdata = self.jdata #TODO: add @property for jdata
         while True:
-            func = self.state_dct[self.graph.current_state]
-            jdata = func.run_client(jdata)#For now all func are connectors
+            print("Now in state:{}".format(self.graph.current_state.name))
+            func = self.state_dct[self.graph.current_state.name]
+            jdata = func.run_client(jdata) #For now all func are connectors
             if self.stop_condition(jdata['next_state']):
                 break
             self.update_state(jdata['next_state'])
@@ -19,10 +24,10 @@ class CozmoBehavior:
     def update_state(self, next_state):
             if next_state != self.graph.current_state:
                 for stt in self.graph.transitions:
-                    if stt.source.name == self.graph.current_state:
+                    if (stt.source.name == self.graph.current_state) and (stt.destinations[0].name  == next_state):
                         # if len(stt.destinations)>1:
                         #     raise ValueError("No more than one destination per state.")
-                        self.graph.run(stt.destinations.identifier)#run transition with string
+                        self.graph.run(stt.destinations[0].identifier)#run transition with string
 
     def stop_condition(self, next_state):
         if next_state == "stop":
@@ -34,8 +39,8 @@ class CozmoBehavior:
     
     @graph.setter
     def graph(self, input_graph):
-        if not isinstance(input_graph, CozmoStates):
-            raise ValueError('Should be an instance of CozmoStates class.')
+        if not isinstance(input_graph, StateMachine):
+            raise ValueError('Should be an instance of StateMachine class.')
         else:
             self._graph = input_graph
 

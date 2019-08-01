@@ -1,7 +1,7 @@
 from statemachine import State, StateMachine
 from Connector import *
 from Module import *
-from example import *
+from Behavior import *
 
 class CozmoStates(StateMachine):
     """Build graph for Cozmo behavior"""
@@ -17,9 +17,9 @@ class CozmoStates(StateMachine):
 
 if __name__ == "__main__":
     graph = CozmoStates()
-    connector_asr = CozmoConnector(addr_client='127.0.0.1:5000')
-    connector_dm = CozmoConnector(addr_client='127.0.0.1:5001')
-    connector_tts = CozmoConnector(addr_client='127.0.0.1:5002')
+    connector_asr = CozmoConnector(addr_client='tcp://127.0.0.1:5000')
+    connector_dm = CozmoConnector(addr_client='tcp://127.0.0.1:5001')
+    connector_tts = CozmoConnector(addr_client='tcp://127.0.0.1:5002')
     state_dct = {
         'asr':connector_asr,
         'dm':connector_dm,

@@ -1,13 +1,12 @@
 import json
 from abc import ABC, abstractmethod
-from example_functions import dm, asr, tts
 
 class Module(ABC):
     def __init__(self, func):
         self.func = func #function of the module
     
     @abstractmethod
-    def call(self, json_data=None):
+    def call(self, jdata=None):
         """call the function here"""
         pass
 
@@ -35,16 +34,16 @@ class CozmoModule(Module):
     """
 
     def __init__(self, func, jdata=None):
-        """input function to be called and initialize json_data.
+        """input function to be called and initialize jdata.
         
         Args:
-            func (callable): If input not JSON, implement json_data pre-processing.
-            json_data (JSON or dict, optional): Defaults to None.
+            func (callable): If input not JSON, implement jdata pre-processing.
+            jdata (JSON or dict, optional): Defaults to None.
         """
         super(CozmoModule, self).__init__(func)
         self.next_state = None
         if jdata is None:
-            self.jdata = json.dumps({'data':None, 'current_state':None, 'next_state':None})
+            self.jdata = {'data':None, 'current_state':None, 'next_state':None}
         else:
             self.jdata = jdata
 
@@ -58,7 +57,7 @@ class CozmoModule(Module):
         next_state = self.get_next_state() #function does not return anything yet
         self.jdata['data'] = data
         self.jdata['next_state'] = next_state
-        return jdata
+        return self.jdata
 
     def get_next_state(self):
         '''implement next state logic'''
@@ -68,10 +67,10 @@ class CozmoModule(Module):
         #TODO: test connector
         setattr(self, '_connector', connector) #patch connector to class
         
-        def run_client(self, jdata): #define Module method to run client from connector
+        def run_client(jdata): #define Module method to run client from connector
             self._connector.run_client(jdata)
             
-        def run_server(self): #define Module method to run server from connector
+        def run_server(): #define Module method to run server from connector
             self._connector.run_server(self.call)
 
         setattr(self, 'run_client', run_client) #create run_client method in Module
@@ -81,13 +80,12 @@ class CozmoModule(Module):
     def jdata(self):
         return self._jdata
     
-    @json_data.setter
+    @jdata.setter
     def jdata(self, jdata):
         json_must_have = ['data', 'current_state', 'next_state']
         try: #check if jdata is json format
-            data = json.loads(jdata)
             for val in json_must_have:
-                if val not in data:
+                if val not in jdata:
                     raise ValueError('JSON input must have: {}'.format(json_must_have))
         except:
             raise ValueError('Input must be JSON and must have {}'.format(json_must_have))

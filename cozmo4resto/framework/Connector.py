@@ -52,6 +52,7 @@ class CozmoConnector(Connector):
                 print('Connection stopped')
                 break
             print('Processing message received')
+            print(msg)
             json_data = func(msg)
             print('Sending JSON data')
             socket.send_json(json_data)

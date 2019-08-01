@@ -1,5 +1,5 @@
-from Module import *
-from Connector import *
+from Connector import CozmoConnector
+from Module import CozmoModule
 
 def dm(input):
     dct = {'potato':'coconut', 'banana':'papaya', 'stop':'stop'}
@@ -15,7 +15,7 @@ class DMModule(CozmoModule):
             return 'stop'
         return 'tts'
 
-dm_connector = CozmoConnector(addr_server='127.0.0.1:5001')
+dm_connector = CozmoConnector(addr_server='tcp://127.0.0.1:5001')
 dm_module = DMModule(dm)
 dm_module.patch_connector(dm_connector)
 dm_module.run_server()
