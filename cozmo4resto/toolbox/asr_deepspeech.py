@@ -88,10 +88,7 @@ class VersionAction(argparse.Action):
         printVersions()
         exit(0)
 
-
-def stt_deepspeech(audio='/media/adminpc/DATA/databases/IEMOCAP_speech_only/Session1/sentences/wav/Ses01F_impro01/Ses01F_impro01_F004.wav',
-                   model='deepspeech-0.5.1-models/output_graph.pb', alphabet='deepspeech-0.5.1-models/alphabet.txt', lm='deepspeech-0.5.1-models/lm.binary', trie='models/trie'):
-
+def load_deepspeech_model(model='deepspeech-0.5.1-models/output_graph.pb', alphabet='deepspeech-0.5.1-models/alphabet.txt', lm='deepspeech-0.5.1-models/lm.binary', trie='models/trie'):
     print('Loading model from file {}'.format(model), file=sys.stderr)
     model_load_start = timer()
     ds = Model(model, N_FEATURES, N_CONTEXT, alphabet, BEAM_WIDTH)
@@ -104,6 +101,37 @@ def stt_deepspeech(audio='/media/adminpc/DATA/databases/IEMOCAP_speech_only/Sess
         ds.enableDecoderWithLM(alphabet, lm, trie, LM_ALPHA, LM_BETA)
         lm_load_end = timer() - lm_load_start
         print('Loaded language model in {:.3}s.'.format(lm_load_end), file=sys.stderr)
+
+    return ds
+
+def stt_deepspeech_numpy(y,fs):
+    '''
+
+    :param y: a float32 numpy array between 0 and 1 containing audio waveform data
+    :param fs: sampling frequency. You should resample your audio to 16000 Hz for better
+    performance. Because the model was trained with that
+    :return:
+    '''
+    ds = load_deepspeech_model()
+
+    print('Running inference.', file=sys.stderr)
+    inference_start = timer()
+
+    v = (y * 32767).astype(np.int16)
+    text = ds.stt(v, fs)
+
+    print(text)
+    inference_end = timer() - inference_start
+    audio_length=len(y)/fs
+    print('Inference took %0.3fs for %0.3fs audio file.' % (inference_end, audio_length), file=sys.stderr)
+
+    return text, inference_end
+
+
+def stt_deepspeech(audio='/media/adminpc/DATA/databases/IEMOCAP_speech_only/Session1/sentences/wav/Ses01F_impro01/Ses01F_impro01_F004.wav',
+                   model='deepspeech-0.5.1-models/output_graph.pb', alphabet='deepspeech-0.5.1-models/alphabet.txt', lm='deepspeech-0.5.1-models/lm.binary', trie='models/trie'):
+
+    ds=load_deepspeech_model(model, alphabet, lm, trie)
 
     fin = wave.open(audio, 'rb')
     fs = fin.getframerate()
