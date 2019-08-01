@@ -8,28 +8,7 @@ from abc import ABC, abstractmethod
 #TODO: Build test functions to input in CozmoModule class
 #TODO: CozmoConnector->CozmoModule to add send and recv with zmq + function using them
 
-#EXAMPLE FUNCTIONS
-import speech_recognition as sr
-def asr():
-    rec = sr.Recognizer()
-    with sr.Microphone() as source:
-        audio = rec.record(source, 5)
-    text = rec.recognize_google(audio)
-    return text
 
-from gtts import gTTS
-def gtts(text):
-    name = str(uuid.uuid4().int)[:10]
-    tts = gTTS(text, 'en')
-    tts.save('potato_'+name+'.wav')
-
-def dm(input):
-    dct = {'potato':'coconut', 'banana':'papaya'}
-    try:
-        output = dct[input]
-    except:
-        output = "Nothing I know!"
-    return output
     
 # class CozmoStates(StateMachine):
 #     """build graph for cozmo"""
@@ -72,26 +51,38 @@ class CozmoConnector(Connector):
     def __init__(self, addr_client = None, addr_server = None):
         super(CozmoConnector, self).__init__(addr_client, addr_server)
     
-    def run_client(self, data, stop_msg="STOP"):
+    def run_client(self, data, stop_msg="STOP", address = None):
         '''zmq rep req implementation'''
+        if address is None:
+            address = self.addr_client
         context = zmq.Context()
         socket = context.socket(zmq.REQ)
-        socket.bind(self.address)
+        socket.bind(address)
         data = json.dumps(data)
+        print('Sending the JSON data')
         socket.send_json(data)
+        print('JSON data sent')
+        print('Waiting for reception')
         json_data = socket.recv_json()
         return json_data
 
     def run_server(self, func, address = None, stop_msg="STOP"):
+        if address is None:
+            address = self.addr_server
         context = zmq.Context()
         socket = context.socket(zmq.REP)
-        socket.connect(self.address)
+        socket.connect(address)
         while True:
+            print('Waiting for request')
             msg = socket.recv_json()
             if msg == stop_msg:
+                print('Connection stopped')
                 break
+            print('Processing message received')
             json_data = func(msg)
+            print('Sending JSON data')
             socket.send_json(json_data)
+            print('Data sent')
 
 class Module(ABC):
     def __init__(self, func):
@@ -102,16 +93,15 @@ class Module(ABC):
         """call the function here"""
         pass
 
-    @abstractmethod
-    def add_connector(self, connector):
-        """connector is instance of Connector"""
-        pass
+    # @abstractmethod
+    # def add_connector(self, connector):
+    #     """connector is instance of Connector"""
+    #     pass
 
-    @abstractmethod
-    def run_connector(self):
-        """must add_connector before"""
-        pass
-
+    # @abstractmethod
+    # def run_connector(self):
+    #     """must add_connector before"""
+    #     pass
 
 class CozmoModule(Module):
     """Implements inputs and outputs only.
@@ -140,19 +130,20 @@ class CozmoModule(Module):
 
     def get_next_state(self, data):
         '''implement next state logic'''
-        pass #TODO: base decision on list of possible states passed to the class?
+        pass
 
-    def add_connector(self, connector):
-        ### TODO: replace this part with more robust test
-        if not hasattr(connector, 'run_server'):
-            raise AttributeError('connector must be a Connector object')
-        ###
-        self.connector = connector
+    # def add_connector(self, connector):
+    #     ### TODO: replace this part with more robust test
+    #     # must be adequate with the Connector class
+    #     if not hasattr(connector, 'run_server'):
+    #         raise AttributeError('connector must be a Connector object')
+    #     ###
+    #     self.connector = connector
 
-    def run_connector(self):
-        if "connector" not in self.__dict__:
-            raise ValueError("Must add_connector first")
-        self.connector.run_server()
+    # def run_connector(self):
+    #     if "connector" not in self.__dict__:
+    #         raise ValueError("Must add_connector first")
+    #     self.connector.run_server()
 
     @property
     def json_data(self):
