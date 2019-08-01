@@ -1,8 +1,10 @@
 # IBM text to speech in python
 # source: https://cloud.ibm.com/apidocs/speech-to-text?code=python
 # after creating a tts resource, go to https://cloud.ibm.com/resources
+# Then take the corresponding API key and paste it here:
+apikey='xxxxxxx'
+
 def tts_ibm(text='Hello, this is a first system to synthesize speech with IBM API',
-            apikey='ebUiBwxYZwRw_2dyt-3vi0QeHhlKbT0tLgfZOC3aokxu',
             url='https://gateway-lon.watsonplatform.net/text-to-speech/api',
             save=False, path='tts_ibm/test.wav'):
     from ibm_watson import TextToSpeechV1
