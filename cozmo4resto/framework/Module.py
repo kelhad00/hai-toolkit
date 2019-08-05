@@ -49,7 +49,7 @@ class CozmoModule(Module):
 
     def call(self, jdata):
         self.jdata = jdata
-        data = self.func(jdata['data']) #call function
+        data = self.func(self.jdata['data']) #call function
         jdata = self.create_json(data)
         return jdata
 
@@ -68,7 +68,9 @@ class CozmoModule(Module):
         setattr(self, '_connector', connector) #patch connector to class
         
         def run_client(jdata): #define Module method to run client from connector
-            self._connector.run_client(jdata)
+            jdata = self._connector.run_client(jdata)#returns data only
+            print(jdata)
+            return jdata
             
         def run_server(): #define Module method to run server from connector
             self._connector.run_server(self.call)

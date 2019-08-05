@@ -12,9 +12,8 @@ class CozmoBehavior:
 
     def run_graph(self, jdata = None):
         if jdata is None:
-            jdata = self.jdata #TODO: add @property for jdata
+                jdata = self.jdata #TODO: add @property for jdata
         while True:
-            print("Now in state:{}".format(self.graph.current_state.name))
             func = self.state_dct[self.graph.current_state.name]
             jdata = func.run_client(jdata) #For now all func are connectors
             if self.stop_condition(jdata['next_state']):
@@ -22,12 +21,12 @@ class CozmoBehavior:
             self.update_state(jdata['next_state'])
     
     def update_state(self, next_state):
-            if next_state != self.graph.current_state:
-                for stt in self.graph.transitions:
-                    if (stt.source.name == self.graph.current_state) and (stt.destinations[0].name  == next_state):
-                        # if len(stt.destinations)>1:
-                        #     raise ValueError("No more than one destination per state.")
-                        self.graph.run(stt.destinations[0].identifier)#run transition with string
+        if next_state != self.graph.current_state.name:
+            for trans in self.graph.transitions:
+                for dest in trans.destinations: #one source but possibly multiple destinations
+                    if (trans.source.name == self.graph.current_state.name) and (dest.name  == next_state):
+                        self.graph.run(trans.identifier)#run transition using string
+                        return
 
     def stop_condition(self, next_state):
         if next_state == "stop":

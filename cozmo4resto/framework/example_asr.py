@@ -7,6 +7,7 @@ def asr(*args):
     with sr.Microphone() as source:
         audio = rec.record(source, 5)
     text = rec.recognize_google(audio)
+    print("Recognized: {}".format(text))
     return text
 
 class ASRModule(CozmoModule):

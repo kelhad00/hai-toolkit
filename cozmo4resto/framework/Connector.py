@@ -28,13 +28,13 @@ class CozmoConnector(Connector):
         context = zmq.Context()
         socket = context.socket(zmq.REQ)
         socket.bind(address)
-        print('Sending the JSON data')
+        # print('Sending the JSON data')
         socket.send_json(data)
-        print('JSON data sent')
-        print('Waiting for reception')
+        # print('JSON data sent')
+        # print('Waiting for reception')
         json_data = socket.recv_json()
-        print('Data received!')
-        print('-----------------------------')
+        # print('Data received!')
+        # print('-----------------------------')
         return json_data
 
     def run_server(self, func, address = None, stop_msg="STOP", break_json_data=''):
@@ -45,16 +45,17 @@ class CozmoConnector(Connector):
         socket = context.socket(zmq.REP)
         socket.connect(address)
         while True:
-            print('Waiting for request')
+            # print('Waiting for request')
             msg = socket.recv_json()
             if msg['data'] == stop_msg:
                 socket.send_json(break_json_data)
-                print('Connection stopped')
+                # print('Connection stopped')
                 break
-            print('Processing message received')
-            print(msg)
+            # print('Processing message received')
+            # print(msg)
             json_data = func(msg)
-            print('Sending JSON data')
+            print(json_data)
+            # print('Sending JSON data')
             socket.send_json(json_data)
-            print('Data sent')
-            print('-----------------------------')
+            # print('Data sent')
+            # print('-----------------------------')
