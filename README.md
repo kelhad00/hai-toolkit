@@ -58,3 +58,18 @@ Clone this in the same folder as toolbox/mic_aqui_kws.py with the name "kws"
 
 * Snowboy
 * Porcupine
+
+# Dialog Management - DM
+
+`pip install rasa`
+
+For documentation on RASA: https://rasa.com/docs/rasa/
+
+For now, you can connect the DM to a Google Connector. How? Like this:
+
+* add connector to credentials.py
+* start project on Google Actions: https://console.actions.google.com
+* run rasa with following command: `rasa run --enable-api -p #PORT#`
+* start ngrok server: `ngrok http #SAMEPORT#`
+* start rasa actions on different server: `rasa run actions`
+* start Google Actions: `gactions test --action_package action.json --project #PROJECTNAME#
