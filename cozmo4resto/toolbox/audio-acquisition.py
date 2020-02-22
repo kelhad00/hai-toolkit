@@ -2,15 +2,43 @@ import numpy as np
 import pyaudio
 import wave
 import time
-
-g_DURATION = 5 #Seconds
-g_CHUNK_DURATION = 1 #Seconds
+import argparse
+import os
 
 FORMAT = pyaudio.paInt16
-g_RATE = 16000
 CHANNELS = 1
 INDEX = 1
-  
+
+def get_args():
+    desc = "Audio acquisition Command Line Tool"
+    epilog = """
+    Saves audio into wav files, located in a folder given by the name of the speaker
+    """
+    parser = argparse.ArgumentParser(description=desc, epilog=epilog,
+                                    formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    parser.add_argument('-n', '--name',
+                        help='Person speaking', default='Default',
+                        required=False)
+
+    parser.add_argument('-f', '--file',
+                        help='Name of the saved wav file', default='test',
+                        required=False)
+
+    parser.add_argument('-d', '--duration',
+                        help='Duration of the wav file (in seconds)', default=5,
+                        type=float, required=False)
+
+    parser.add_argument('-c', '--chunk',
+                        help='Chunk size (in seconds)', default=1,
+                        type=float, required=False)
+    
+    parser.add_argument('-r', '--rate',
+                        help='Sampling rate', default=16000,
+                        choices=[8000, 16000, 24000, 44100, 48000], required=False)
+
+    return parser.parse_args()
+
 def record(duration, chunk_duration, rate):
     """
     Records audio using microphone
@@ -43,7 +71,7 @@ def record(duration, chunk_duration, rate):
     sample_width = p.get_sample_size(FORMAT)
     return buffer, sample_width
 
-def save(data, width, rate):
+def save(path, data, width, rate):
     """
     Saves the data recorded in a .wav file
     
@@ -53,7 +81,7 @@ def save(data, width, rate):
         rate {int} -- Sampling rate of the saved file
     """
     for i in range(len(data)):
-        wf = wave.open('test_' + str(i) + '.wav', 'wb')
+        wf = wave.open(path + '_' + str(i) + '.wav', 'wb')
         wf.setnchannels(1)
         wf.setsampwidth(width)
         wf.setframerate(rate)
@@ -61,9 +89,19 @@ def save(data, width, rate):
         wf.close()
 
 if __name__ == '__main__':
-    tmp = time.time() #Efficiency estimation by timing
-    duration = g_DURATION; chunk_duration = g_CHUNK_DURATION; rate = g_RATE
+    global args
+    args = get_args()
+
+    path = "../Users/" + str(args.name)
+    if not(os.path.exists(path)):
+        try:
+            os.makedirs(path)
+        except OSError:
+            print ("Creation of the directory %s failed" %path)
+    path = path + "/" + str(args.file)
+    start_time = time.time() #Efficiency estimation by timing
+    duration = args.duration; chunk_duration = args.chunk; rate = args.rate
     audio, sample_width = record(duration, chunk_duration, rate)
-    fin = time.time() #Efficiency estimation by timing
-    save(audio, sample_width, rate)
-    print("Done : ", fin - tmp - duration)
+    final_time = time.time() #Efficiency estimation by timing
+    save(path, audio, sample_width, rate)
+    print("Done : ", final_time - start_time - duration)
