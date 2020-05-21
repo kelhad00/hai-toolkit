@@ -25,7 +25,7 @@ get the API key and write it in asr_apis.py
 
 * Google Speech recognition API
 
-* [DeepSpeech](https://cloud.ibm.com/apidocs/speech-to-text?code=python)
+* DeepSpeech
 
 ------------------------
 For GPU version:
